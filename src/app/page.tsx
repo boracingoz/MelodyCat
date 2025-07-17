@@ -19,10 +19,17 @@ type Playlist = {
   songs: Song[];
 };
 
+import SearchPage from "@/components/SearchPage";
+import LibraryPage from "@/components/LibraryPage";
+import LikedSongsPage from "@/components/LikedSongsPage";
+
 export default function Home() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  type NavigationType = "home" | "search" | "library" | "liked" | "playlistDetail";
+  const [navigation, setNavigation] = useState<NavigationType>("home");
+  const [navigationStack, setNavigationStack] = useState<NavigationType[]>([]);
 
   // ✅ Şarkı listesi doğrudan public klasöründen
   const allSongs: Song[] = [
@@ -110,12 +117,36 @@ export default function Home() {
       <Sidebar
         playlistsAction={playlists}
         setPlaylistsAction={setPlaylists}
-        onSelectPlaylistAction={(playlist) => setSelectedPlaylist(playlist)}
-        onGoHomeAction={() => setSelectedPlaylist(null)}
+        onSelectPlaylistAction={(playlist) => {
+          setNavigationStack((prev) => [...prev, navigation]);
+          setSelectedPlaylist(playlist);
+          setNavigation("playlistDetail");
+        }}
+        onGoHomeAction={() => {
+          setNavigation("home");
+          setSelectedPlaylist(null);
+        }}
+        onSearchAction={() => {
+          setNavigationStack((prev) => [...prev, navigation]);
+          setNavigation("search");
+        }}
+        onLibraryAction={() => {
+          setNavigationStack((prev) => [...prev, navigation]);
+          setNavigation("library");
+        }}
+        onLikedSongsAction={() => {
+          setNavigationStack((prev) => [...prev, navigation]);
+          setNavigation("liked");
+        }}
+        allSongs={allSongs}
+        onSongSelectAction={(song: Song) => {
+          setCurrentSong(song);
+          setNavigation("home");
+        }}
       />
 
       <div className="ml-60 flex-1 p-8">
-        {!selectedPlaylist ? (
+        {navigation === "home" && (
           <div className="flex flex-col items-center justify-center h-full">
             <Image
               src="/images/melodycat-logo.png"
@@ -128,11 +159,46 @@ export default function Home() {
               🎵 MelodyCat Çalışıyor!
             </h1>
           </div>
-        ) : (
+        )}
+        {navigation === "search" && (
+          <SearchPage
+            onBack={() => {
+              setNavigation(navigationStack[navigationStack.length - 1] || "home");
+              setNavigationStack((prev) => prev.slice(0, -1));
+            }}
+            allSongs={allSongs}
+            onSongSelectAction={(song: Song) => {
+              setCurrentSong(song);
+              setNavigation("home");
+            }}
+          />
+        )}
+        {navigation === "library" && (
+          <LibraryPage onBack={() => {
+            setNavigation(navigationStack[navigationStack.length - 1] || "home");
+            setNavigationStack((prev) => prev.slice(0, -1));
+          }} />
+        )}
+        {navigation === "liked" && (
+          <LikedSongsPage onBack={() => {
+            setNavigation(navigationStack[navigationStack.length - 1] || "home");
+            setNavigationStack((prev) => prev.slice(0, -1));
+          }} />
+        )}
+        {navigation === "playlistDetail" && selectedPlaylist && (
           <div>
+            <button
+              onClick={() => {
+                setNavigation(navigationStack[navigationStack.length - 1] || "home");
+                setNavigationStack((prev) => prev.slice(0, -1));
+                setSelectedPlaylist(null);
+              }}
+              className="mb-4 px-3 py-1 bg-neutral-800 text-white rounded hover:bg-orange-600 transition"
+            >
+              ← Geri
+            </button>
             <h2 className="text-2xl font-bold mb-4">{selectedPlaylist.name}</h2>
-
-            {/* ✅ Playlist Şarkıları */}
+            {/* Playlist şarkıları */}
             <div className="flex flex-col gap-4 mb-6">
               {selectedPlaylist.songs.map((song, index) => (
                 <div
@@ -164,8 +230,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-
-            {/* ✅ Tüm Şarkılardan Playlist'e Ekleme */}
+            {/* Tüm şarkılardan Playlist'e Ekleme */}
             <h3 className="text-lg font-semibold mb-2">Tüm Şarkılar</h3>
             <div className="grid grid-cols-2 gap-3">
               {allSongs.map((song, index) => (
@@ -198,7 +263,6 @@ export default function Home() {
           </div>
         )}
       </div>
-
       <PlayerBar currentSong={currentSong} />
     </main>
   );
